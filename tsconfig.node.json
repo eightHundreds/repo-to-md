@@ -26,8 +26,7 @@
     "allowJs": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "types": ["node", "vite"]
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["vite.config.ts"]
 }

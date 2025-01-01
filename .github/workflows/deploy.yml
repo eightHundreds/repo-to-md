@@ -9,9 +9,6 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     
-    env:
-      NODE_ENV: production
-      
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,9 +38,14 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Type Check
+        run: pnpm exec tsc --noEmit
 
       - name: Build
+        env:
+          NODE_ENV: production
         run: pnpm build
 
       - name: Deploy
