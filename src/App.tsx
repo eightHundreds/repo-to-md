@@ -14,8 +14,8 @@ const { Header, Content } = Layout;
 const { Title } = Typography;
 const { Item: FormItem } = Form;
 
-const DEFAULT_REPO_URL = 'https://github.com/huggingface/transformers';
-const DEFAULT_INCLUDE = 'docs/zh/**';
+const DEFAULT_REPO_URL = '';
+const DEFAULT_INCLUDE = '';
 const DEFAULT_EXCLUDE = '**/node_modules/**,**/dist/**,**/build/**';
 
 // 保存 WebContainer 实例
