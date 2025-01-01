@@ -1,50 +1,36 @@
-# React + TypeScript + Vite
+# GitHub 仓库转 Markdown 工具
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+这是一个基于 WebContainer 技术的在线工具，可以将 GitHub 仓库中的文件转换为单一的 Markdown 文档。
 
-Currently, two official plugins are available:
+## 功能特点
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 🚀 在线转换：无需本地克隆，直接在浏览器中完成转换
+- 🎯 灵活筛选：支持使用 glob 模式包含或排除特定文件
+- 📝 实时预览：内置 Monaco 编辑器，支持 Markdown 实时预览和编辑
+- 💾 一键下载：转换完成后可直接下载 Markdown 文件
+- 🔍 文件列表：显示所有已处理的文件清单
 
-## Expanding the ESLint configuration
+## 使用方法
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+1. 访问网站，输入 GitHub 仓库的 URL（例如：https://github.com/owner/repo）
+2. 可选：设置文件包含模式（例如：`**/*.md` 仅包含 markdown 文件）
+3. 可选：设置文件排除模式（例如：`**/node_modules/**` 排除 node_modules 目录）
+4. 点击"转换"按钮开始处理
+5. 等待转换完成后，可以：
+   - 在编辑器中预览和编辑内容
+   - 点击"下载 Markdown"保存文件
 
-- Configure the top-level `parserOptions` property like this:
+## 技术栈
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- React + TypeScript
+- Ant Design UI 组件库
+- Monaco Editor 代码编辑器
+- WebContainer API 用于在浏览器中执行 Git 操作
+- Isomorphic Git 用于 Git 操作
+- Fast Glob 用于文件匹配
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+## 注意事项
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+- 由于使用了 WebContainer 技术，请确保在支持 SharedArrayBuffer 的现代浏览器中使用
+- 建议在 HTTPS 或 localhost 环境下运行
+- 对于大型仓库，转换过程可能需要一些时间，请耐心等待
