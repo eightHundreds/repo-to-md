@@ -13,10 +13,11 @@ declare global {
 const { Header, Content } = Layout;
 const { Title } = Typography;
 const { Item: FormItem } = Form;
+const { TextArea } = Input;
 
 const DEFAULT_REPO_URL = '';
 const DEFAULT_INCLUDE = '';
-const DEFAULT_EXCLUDE = '**/node_modules/**,**/dist/**,**/build/**';
+const DEFAULT_EXCLUDE = '**/node_modules/**,**/dist/**,**/build/**,**/.git/**,**/venv/**,**/__pycache__/**,**/*.pyc,**/package-lock.json,**/yarn.lock,**/pnpm-lock.yaml,**/.env,**/.DS_Store,**/coverage/**,**/.idea/**,**/.vscode/**,**/tmp/**,**/temp/**';
 
 // 保存 WebContainer 实例
 let webcontainerInstance: WebContainer | null = null;
@@ -426,26 +427,33 @@ function App() {
                   placeholder="例如：https://github.com/owner/repo"
                   value={repoUrl}
                   onChange={handleInputChange}
+                  size="large"
                 />
               </FormItem>
               <FormItem
                 label={<>包含文件模式 <span style={{ color: '#999', fontWeight: 'normal' }}>(可选)</span></>}
                 tooltip="使用 glob 语法指定要包含的文件，多个模式用逗号分隔"
               >
-                <Input
+                <TextArea
                   placeholder="例如：**/*.{js,jsx,ts,tsx,md,json}"
                   value={includePattern}
                   onChange={(e) => setIncludePattern(e.target.value)}
+                  size="large"
+                  autoSize={{ minRows: 1, maxRows: 3 }}
+                  style={{ resize: 'none' }}
                 />
               </FormItem>
               <FormItem
                 label={<>排除文件模式 <span style={{ color: '#999', fontWeight: 'normal' }}>(可选)</span></>}
                 tooltip="使用 glob 语法指定要排除的文件，多个模式用逗号分隔"
               >
-                <Input
+                <TextArea
                   placeholder="例如：**/node_modules/**,**/dist/**"
                   value={excludePattern}
                   onChange={(e) => setExcludePattern(e.target.value)}
+                  size="large"
+                  autoSize={{ minRows: 1, maxRows: 3 }}
+                  style={{ resize: 'none' }}
                 />
               </FormItem>
               <FormItem>
