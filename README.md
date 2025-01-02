@@ -1,4 +1,8 @@
-# GitHub 仓库转 Markdown 工具
+# GitHub 仓库转 Markdown 工具 | GitHub Repository to Markdown Tool
+
+[中文](#中文) | [English](#english)
+
+# 中文
 
 这是一个基于 WebContainer 技术的在线工具，可以将 GitHub 仓库中的文件转换为单一的 Markdown 文档。
 
@@ -34,3 +38,42 @@
 - 由于使用了 WebContainer 技术，请确保在支持 SharedArrayBuffer 的现代浏览器中使用
 - 建议在 HTTPS 或 localhost 环境下运行
 - 对于大型仓库，转换过程可能需要一些时间，请耐心等待
+
+---
+
+# English
+
+This is an online tool based on WebContainer technology that converts GitHub repository files into a single Markdown document.
+
+## Features
+
+- 🚀 Online Conversion: Convert directly in your browser without local cloning
+- 🎯 Flexible Filtering: Support glob patterns to include or exclude specific files
+- 📝 Real-time Preview: Built-in Monaco editor with Markdown preview and editing
+- 💾 One-click Download: Download the converted Markdown file instantly
+- 🔍 File List: Display a list of all processed files
+
+## How to Use
+
+1. Visit the website and enter a GitHub repository URL (e.g., https://github.com/owner/repo)
+2. Optional: Set file include patterns (e.g., `**/*.md` to include only markdown files)
+3. Optional: Set file exclude patterns (e.g., `**/node_modules/**` to exclude node_modules directory)
+4. Click the "Convert" button to start processing
+5. After conversion is complete, you can:
+   - Preview and edit content in the editor
+   - Click "Download Markdown" to save the file
+
+## Tech Stack
+
+- React + TypeScript
+- Ant Design UI Components
+- Monaco Editor
+- WebContainer API for browser-based Git operations
+- Isomorphic Git for Git operations
+- Fast Glob for file matching
+
+## Notes
+
+- Due to WebContainer technology, please ensure you're using a modern browser that supports SharedArrayBuffer
+- The site should be run under HTTPS or localhost environment
+- For large repositories, the conversion process may take some time, please be patient

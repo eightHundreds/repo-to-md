@@ -1,7 +1,8 @@
-import { useState, ChangeEvent } from 'react';
-import { Button, Input, message, Layout, Typography, Form, List } from 'antd';
+import { useState, ChangeEvent, useEffect } from 'react';
+import { Button, Input, message, Layout, Typography, Form, List, Switch } from 'antd';
 import Editor from "@monaco-editor/react";
 import { WebContainer } from '@webcontainer/api';
+import { messages, type Locale } from './locales';
 
 // 扩展 window 类型
 declare global {
@@ -234,6 +235,20 @@ const runCommand = async (container: WebContainer, command: string, args: string
   }
 };
 
+// 获取系统默认语言
+const getDefaultLocale = (): Locale => {
+  const systemLanguages = navigator.languages || [navigator.language];
+  // 检查是否有中文（简体或繁体）
+  const hasChinese = systemLanguages.some(lang => 
+    lang.toLowerCase().startsWith('zh') || 
+    lang.toLowerCase() === 'zh' || 
+    lang.toLowerCase() === 'zh-cn' || 
+    lang.toLowerCase() === 'zh-tw' || 
+    lang.toLowerCase() === 'zh-hk'
+  );
+  return hasChinese ? 'zh' : 'en';
+};
+
 function App() {
   const [repoUrl, setRepoUrl] = useState(DEFAULT_REPO_URL);
   const [includePattern, setIncludePattern] = useState(DEFAULT_INCLUDE);
@@ -242,12 +257,26 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [processedFiles, setProcessedFiles] = useState<string[]>([]);
+  const [locale, setLocale] = useState<Locale>(getDefaultLocale());
+  const t = messages[locale];
+
+  // 监听系统语言变化
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      setLocale(getDefaultLocale());
+    };
+
+    window.addEventListener('languagechange', handleLanguageChange);
+    return () => {
+      window.removeEventListener('languagechange', handleLanguageChange);
+    };
+  }, []);
 
   const handleConvert = async () => {
     try {
       log('开始转换流程');
       setLoading(true);
-      setStatus('初始化...');
+      setStatus(t.status.init);
 
       // 解析 include 和 exclude 模式
       const includes = includePattern.split(',').map(p => p.trim()).filter(Boolean);
@@ -256,7 +285,7 @@ function App() {
       // 验证 URL 格式
       const repoRegex = /^https:\/\/github\.com\/[^/]+\/[^/]+/;
       if (!repoRegex.test(repoUrl)) {
-        throw new Error('无效的 GitHub 仓库 URL');
+        throw new Error(t.errors.invalidUrl);
       }
       log('URL 验证通过:', repoUrl);
 
@@ -266,7 +295,7 @@ function App() {
 
       // 清理旧的仓库目录（如果存在）
       try {
-        setStatus('清理旧目录...');
+        setStatus(t.status.cleaning);
         log('开始清理旧目录');
         await container.fs.rm('repo', { recursive: true });
         log('旧目录清理完成');
@@ -275,14 +304,14 @@ function App() {
       }
 
       // 克隆仓库
-      setStatus('克隆仓库...');
+      setStatus(t.status.cloning);
       log('开始克隆仓库');
       await runCommand(container, 'node', ['clone.js', repoUrl, 'repo'], (message) => {
         try {
           const progress = JSON.parse(message);
-          setStatus(`克隆仓库中: ${progress.phase} ${progress.loaded || 0}/${progress.total || 0}`);
+          setStatus(`${t.status.cloning} ${progress.phase} ${progress.loaded || 0}/${progress.total || 0}`);
         } catch {
-          setStatus(`克隆仓库中: ${message}`);
+          setStatus(`${t.status.cloning} ${message}`);
         }
         log('克隆进度:', message);
       });
@@ -321,7 +350,7 @@ function App() {
 
         try {
           // 使用 fast-glob 在 WebContainer 内扫描文件
-          setStatus('扫描文件...');
+          setStatus(t.status.scanning);
           log('开始扫描匹配文件');
           
           const process = await container.spawn('node', [
@@ -344,19 +373,19 @@ function App() {
               if (code === 0) {
                 resolve(result);
               } else {
-                reject(new Error('文件扫描失败'));
+                reject(new Error(t.errors.scanFailed));
               }
             });
           });
 
           const matchedFiles = JSON.parse(output) as string[];
           log('找到匹配的文件列表:', matchedFiles);
-          setStatus(`找到 ${matchedFiles.length} 个匹配文件`);
+          setStatus(t.status.foundFiles.replace('{count}', String(matchedFiles.length)));
 
           // 处理每个匹配的文件
           for (const relativePath of matchedFiles) {
             const fullPath = `repo/${relativePath}`;
-            setStatus(`处理文件: ${relativePath}`);
+            setStatus(`${t.status.processing}: ${relativePath}`);
             log(`处理: ${relativePath}`);
 
             try {
@@ -381,7 +410,7 @@ function App() {
         return content;
       };
 
-      setStatus('生成 Markdown...');
+      setStatus(t.status.generating);
       log('开始生成 Markdown');
       const markdownContent = await processFiles();
       log('Markdown 生成完成');
@@ -389,11 +418,11 @@ function App() {
 
       setStatus('');
       log('转换流程完成');
-      message.success('转换完成！');
+      message.success(t.status.complete);
     } catch (error) {
       log('转换过程出错:', error);
       setStatus('');
-      message.error(error instanceof Error ? error.message : '转换失败');
+      message.error(error instanceof Error ? error.message : t.errors.convertFailed);
     } finally {
       setLoading(false);
     }
@@ -405,8 +434,24 @@ function App() {
 
   return (
     <Layout style={{ minHeight: '100vh', width: '100vw' }}>
-      <Header style={{ background: '#fff', padding: '0 20px', textAlign: 'center' }}>
-        <Title level={3}>GitHub 仓库转 Markdown</Title>
+      <Header style={{ 
+        background: '#fff', 
+        padding: '0 20px', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center' 
+      }}>
+        <Title level={3}>{t.title}</Title>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Typography.Text>中文</Typography.Text>
+          <Switch
+            checked={locale === 'en'}
+            onChange={(checked) => setLocale(checked ? 'en' : 'zh')}
+            checkedChildren="EN"
+            unCheckedChildren="中"
+          />
+          <Typography.Text>English</Typography.Text>
+        </div>
       </Header>
       <Content>
         <div style={{ 
@@ -419,23 +464,23 @@ function App() {
           <div style={{ flex: '1 1 300px', maxWidth: '300px' }}>
             <Form layout="vertical">
               <FormItem
-                label="GitHub 仓库 URL"
+                label={t.repoUrl.label}
                 required
-                tooltip="输入要转换的 GitHub 仓库地址"
+                tooltip={t.repoUrl.tooltip}
               >
                 <Input
-                  placeholder="例如：https://github.com/owner/repo"
+                  placeholder={t.repoUrl.placeholder}
                   value={repoUrl}
                   onChange={handleInputChange}
                   size="large"
                 />
               </FormItem>
               <FormItem
-                label={<>包含文件模式 <span style={{ color: '#999', fontWeight: 'normal' }}>(可选)</span></>}
-                tooltip="使用 glob 语法指定要包含的文件，多个模式用逗号分隔"
+                label={<>{t.includePattern.label} <span style={{ color: '#999', fontWeight: 'normal' }}>{t.includePattern.optional}</span></>}
+                tooltip={t.includePattern.tooltip}
               >
                 <TextArea
-                  placeholder="例如：**/*.{js,jsx,ts,tsx,md,json}"
+                  placeholder={t.includePattern.placeholder}
                   value={includePattern}
                   onChange={(e) => setIncludePattern(e.target.value)}
                   size="large"
@@ -444,11 +489,11 @@ function App() {
                 />
               </FormItem>
               <FormItem
-                label={<>排除文件模式 <span style={{ color: '#999', fontWeight: 'normal' }}>(可选)</span></>}
-                tooltip="使用 glob 语法指定要排除的文件，多个模式用逗号分隔"
+                label={<>{t.excludePattern.label} <span style={{ color: '#999', fontWeight: 'normal' }}>{t.excludePattern.optional}</span></>}
+                tooltip={t.excludePattern.tooltip}
               >
                 <TextArea
-                  placeholder="例如：**/node_modules/**,**/dist/**"
+                  placeholder={t.excludePattern.placeholder}
                   value={excludePattern}
                   onChange={(e) => setExcludePattern(e.target.value)}
                   size="large"
@@ -463,7 +508,7 @@ function App() {
                   loading={loading}
                   style={{ width: '100%' }}
                 >
-                  转换
+                  {t.buttons.convert}
                 </Button>
                 {markdown && (
                   <Button
@@ -480,7 +525,7 @@ function App() {
                       URL.revokeObjectURL(url);
                     }}
                   >
-                    下载 Markdown
+                    {t.buttons.download}
                   </Button>
                 )}
               </FormItem>
@@ -488,7 +533,7 @@ function App() {
               
               {processedFiles.length > 0 && (
                 <div style={{ marginTop: '20px' }}>
-                  <Typography.Text strong>已处理的文件 ({processedFiles.length})</Typography.Text>
+                  <Typography.Text strong>{t.status.processedFiles} ({processedFiles.length})</Typography.Text>
                   <List
                     size="small"
                     style={{ 
