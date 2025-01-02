@@ -63,6 +63,14 @@ jobs:
           NODE_ENV: production
         run: pnpm build
 
+      - name: Create headers file
+        run: |
+          cat > dist/_headers << EOL
+          /*
+            Cross-Origin-Embedder-Policy: require-corp
+            Cross-Origin-Opener-Policy: same-origin
+          EOL
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
