@@ -334,18 +334,52 @@ function App() {
           for (let i = 0; i < sample.length; i++) {
             const code = sample.charCodeAt(i);
             
-            // 允许的字符范围：
-            // 9: tab, 10: 换行, 13: 回车
-            // 32-126: ASCII 可打印字符
-            // 128-65535: 扩展 ASCII 和 Unicode 字符（包括中文）
-            // 大于 65535 的 Unicode 字符（用两个 code unit 表示的字符）
             if (code !== 9 && code !== 10 && code !== 13 && code < 32) {
               nonPrintableCount++;
             }
           }
 
-          // 如果不可打印字符数量超过样本的 5%，则认为是二进制文件
           return nonPrintableCount < sample.length * 0.05;
+        };
+
+        // 检查文件是否为非文本文件
+        const isNonTextFile = (filename: string): boolean => {
+          const nonTextExtensions = {
+            // 图片文件
+            images: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff', '.tif', '.raw', '.psd'],
+            
+            // 音视频文件
+            media: [
+              '.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac',  // 音频
+              '.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm'  // 视频
+            ],
+            
+            // 压缩文件
+            archives: ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.iso'],
+            
+            // 二进制和可执行文件
+            executables: ['.exe', '.dll', '.so', '.dylib', '.bin', '.dat', '.db', '.sqlite', '.class'],
+            
+            // 字体文件
+            fonts: ['.ttf', '.otf', '.woff', '.woff2', '.eot'],
+            
+            // 文档和办公文件
+            documents: [
+              '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+              '.pages', '.numbers', '.key', '.odt', '.ods', '.odp'
+            ],
+            
+            // 设计文件
+            design: ['.ai', '.eps', '.sketch', '.fig', '.xd'],
+
+            // 其他二进制文件
+            others: ['.pyc', '.pyo', '.o', '.obj', '.lib', '.a', '.deb', '.rpm']
+          };
+
+          const lowerFilename = filename.toLowerCase();
+          return Object.values(nonTextExtensions)
+            .flat()
+            .some(ext => lowerFilename.endsWith(ext));
         };
 
         try {
@@ -389,6 +423,12 @@ function App() {
             log(`处理: ${relativePath}`);
 
             try {
+              // 首先检查是否为非文本文件
+              if (isNonTextFile(relativePath)) {
+                log(`跳过非文本文件: ${relativePath}`);
+                continue;
+              }
+
               const fileContent = await container.fs.readFile(fullPath, 'utf-8');
               if (isTextFile(fileContent)) {
                 content += `------ ${relativePath} -----\n\n\`\`\`\n${fileContent}\n\`\`\`\n\n`;
