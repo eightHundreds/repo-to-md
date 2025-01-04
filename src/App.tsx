@@ -1,8 +1,13 @@
 import { useState, ChangeEvent, useEffect } from 'react';
-import { Button, Input, message, Layout, Typography, Form, List, Switch } from 'antd';
+import { Button, Input, message, Layout, Typography, Form, Switch, Space, Grid } from 'antd';
 import Editor from "@monaco-editor/react";
 import { WebContainer } from '@webcontainer/api';
 import { messages, type Locale } from './locales';
+
+const { Header, Content } = Layout;
+const { Title } = Typography;
+const { Item: FormItem } = Form;
+const { useBreakpoint } = Grid;
 
 // 扩展 window 类型
 declare global {
@@ -10,11 +15,6 @@ declare global {
     webcontainerInstance: WebContainer | null;
   }
 }
-
-const { Header, Content } = Layout;
-const { Title } = Typography;
-const { Item: FormItem } = Form;
-const { TextArea } = Input;
 
 const DEFAULT_REPO_URL = '';
 const DEFAULT_INCLUDE = '';
@@ -258,6 +258,8 @@ function App() {
   const [status, setStatus] = useState('');
   const [processedFiles, setProcessedFiles] = useState<string[]>([]);
   const [locale, setLocale] = useState<Locale>(getDefaultLocale());
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
   const t = messages[locale];
 
   // 监听系统语言变化
@@ -472,153 +474,98 @@ function App() {
     setRepoUrl(e.target.value);
   };
 
+  const handleLanguageChange = () => {
+    setLocale(locale === 'zh' ? 'en' : 'zh');
+  };
+
   return (
-    <Layout style={{ minHeight: '100vh', width: '100vw' }}>
+    <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ 
-        background: '#fff', 
-        padding: '0 20px', 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center' 
+        padding: isMobile ? '0 16px' : '0 50px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        height: 'auto',
+        minHeight: 64
       }}>
-        <Title level={3}>{t.title}</Title>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Typography.Text>中文</Typography.Text>
-          <Switch
-            checked={locale === 'en'}
-            onChange={(checked) => setLocale(checked ? 'en' : 'zh')}
-            checkedChildren="EN"
-            unCheckedChildren="中"
-          />
-          <Typography.Text>English</Typography.Text>
-        </div>
-      </Header>
-      <Content>
-        <div style={{ 
-          width: '90%', 
-          maxWidth: '1400px', 
-          margin: '20px auto',
-          display: 'flex',
-          gap: '20px'
+        <Title level={isMobile ? 4 : 3} style={{ 
+          margin: isMobile ? '12px 0' : '16px 0',
+          color: '#fff',
+          flex: isMobile ? '1 1 100%' : '0 1 auto'
         }}>
-          <div style={{ flex: '1 1 300px', maxWidth: '300px' }}>
-            <Form layout="vertical">
-              <FormItem
-                label={t.repoUrl.label}
-                required
-                tooltip={t.repoUrl.tooltip}
-              >
-                <Input
-                  placeholder={t.repoUrl.placeholder}
-                  value={repoUrl}
-                  onChange={handleInputChange}
-                  size="large"
-                />
-              </FormItem>
-              <FormItem
-                label={<>{t.includePattern.label} <span style={{ color: '#999', fontWeight: 'normal' }}>{t.includePattern.optional}</span></>}
-                tooltip={t.includePattern.tooltip}
-              >
-                <TextArea
-                  placeholder={t.includePattern.placeholder}
-                  value={includePattern}
-                  onChange={(e) => setIncludePattern(e.target.value)}
-                  size="large"
-                  autoSize={{ minRows: 1, maxRows: 3 }}
-                  style={{ resize: 'none' }}
-                />
-              </FormItem>
-              <FormItem
-                label={<>{t.excludePattern.label} <span style={{ color: '#999', fontWeight: 'normal' }}>{t.excludePattern.optional}</span></>}
-                tooltip={t.excludePattern.tooltip}
-              >
-                <TextArea
-                  placeholder={t.excludePattern.placeholder}
-                  value={excludePattern}
-                  onChange={(e) => setExcludePattern(e.target.value)}
-                  size="large"
-                  autoSize={{ minRows: 1, maxRows: 3 }}
-                  style={{ resize: 'none' }}
-                />
-              </FormItem>
-              <FormItem>
-                <Button
-                  type="primary"
-                  onClick={handleConvert}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                >
-                  {t.buttons.convert}
-                </Button>
-                {markdown && (
-                  <Button
-                    style={{ width: '100%', marginTop: 8 }}
-                    onClick={() => {
-                      const blob = new Blob([markdown], { type: 'text/markdown' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = 'repository.md';
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                    }}
-                  >
-                    {t.buttons.download}
-                  </Button>
-                )}
-              </FormItem>
-              {status && <div style={{ color: '#1890ff' }}>{status}</div>}
-              
-              {processedFiles.length > 0 && (
-                <div style={{ marginTop: '20px' }}>
-                  <Typography.Text strong>{t.status.processedFiles} ({processedFiles.length})</Typography.Text>
-                  <List
-                    size="small"
-                    style={{ 
-                      marginTop: '8px',
-                      maxHeight: '300px',
-                      overflowY: 'auto',
-                      border: '1px solid #f0f0f0',
-                      borderRadius: '4px'
-                    }}
-                    dataSource={processedFiles}
-                    renderItem={item => (
-                      <List.Item style={{ padding: '4px 8px' }}>
-                        <Typography.Text ellipsis style={{ width: '100%' }}>
-                          {item}
-                        </Typography.Text>
-                      </List.Item>
-                    )}
-                  />
-                </div>
-              )}
-            </Form>
-          </div>
-          
-          <div style={{ flex: '1 1 0%' }}>
-            <div style={{ 
-              border: '1px solid #d9d9d9', 
-              borderRadius: '2px',
-              height: 'calc(100vh - 120px)'
-            }}>
-              <Editor
-                height="100%"
-                defaultLanguage="markdown"
-                value={markdown}
-                onChange={(value) => setMarkdown(value || '')}
-                options={{
-                  readOnly: false,
-                  minimap: { enabled: true },
-                  wordWrap: 'on',
-                  fontSize: 14,
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                }}
-              />
-            </div>
-          </div>
+          {t.title}
+        </Title>
+        <Space style={{ marginLeft: 'auto' }}>
+          <Switch
+            checkedChildren="中"
+            unCheckedChildren="En"
+            checked={locale === 'zh'}
+            onChange={handleLanguageChange}
+          />
+        </Space>
+      </Header>
+      <Content style={{ 
+        padding: isMobile ? '16px' : '24px 50px',
+        maxWidth: '100%',
+        margin: '0 auto',
+        width: '100%',
+        overflow: 'hidden'
+      }}>
+        <Form layout={isMobile ? 'vertical' : 'horizontal'} style={{ marginBottom: 24 }}>
+          <FormItem label={t.repoUrl.label}>
+            <Input
+              placeholder={t.repoUrl.placeholder}
+              value={repoUrl}
+              onChange={handleInputChange}
+              style={{ width: '100%' }}
+            />
+          </FormItem>
+          <FormItem label={t.includePattern.label}>
+            <Input
+              placeholder={t.includePattern.placeholder}
+              value={includePattern}
+              onChange={(e) => setIncludePattern(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </FormItem>
+          <FormItem label={t.excludePattern.label}>
+            <Input
+              placeholder={t.excludePattern.placeholder}
+              value={excludePattern}
+              onChange={(e) => setExcludePattern(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </FormItem>
+          <FormItem>
+            <Button
+              type="primary"
+              onClick={handleConvert}
+              loading={loading}
+              style={{ width: isMobile ? '100%' : 'auto' }}
+            >
+              {t.buttons.convert}
+            </Button>
+          </FormItem>
+        </Form>
+        <div style={{ 
+          height: isMobile ? 'calc(100vh - 500px)' : 'calc(100vh - 300px)',
+          minHeight: '300px'
+        }}>
+          <Editor
+            height="100%"
+            defaultLanguage="markdown"
+            value={markdown}
+            theme="vs-dark"
+            options={{
+              minimap: { enabled: !isMobile },
+              fontSize: isMobile ? 14 : 16,
+              wordWrap: 'on',
+              lineNumbers: !isMobile ? 'on' : 'off',
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+            }}
+          />
         </div>
       </Content>
     </Layout>
