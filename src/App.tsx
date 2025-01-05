@@ -1,8 +1,9 @@
 import { useState, ChangeEvent, useEffect } from 'react';
-import { Button, Input, message, Layout, Typography, Form, List, Switch } from 'antd';
+import { Button, Input, message, Layout, Typography, Form, List, Switch, Grid } from 'antd';
 import Editor from "@monaco-editor/react";
 import { WebContainer } from '@webcontainer/api';
 import { messages, type Locale } from './locales';
+import './styles/App.css';
 
 // 扩展 window 类型
 declare global {
@@ -249,6 +250,8 @@ const getDefaultLocale = (): Locale => {
   return hasChinese ? 'zh' : 'en';
 };
 
+const { useBreakpoint } = Grid;
+
 function App() {
   const [repoUrl, setRepoUrl] = useState(DEFAULT_REPO_URL);
   const [includePattern, setIncludePattern] = useState(DEFAULT_INCLUDE);
@@ -258,6 +261,7 @@ function App() {
   const [status, setStatus] = useState('');
   const [processedFiles, setProcessedFiles] = useState<string[]>([]);
   const [locale, setLocale] = useState<Locale>(getDefaultLocale());
+  const screens = useBreakpoint();
   const t = messages[locale];
 
   // 监听系统语言变化
@@ -473,35 +477,24 @@ function App() {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', width: '100vw' }}>
-      <Header style={{ 
-        background: '#fff', 
-        padding: '0 20px', 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center' 
-      }}>
-        <Title level={3}>{t.title}</Title>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <Layout className="app-layout">
+      <Header className="app-header">
+        <Title level={3} className="app-header-title">{t.title}</Title>
+        <div className="language-switch">
           <Typography.Text>中文</Typography.Text>
           <Switch
             checked={locale === 'en'}
             onChange={(checked) => setLocale(checked ? 'en' : 'zh')}
             checkedChildren="EN"
             unCheckedChildren="中"
+            size={screens.xs ? 'small' : 'default'}
           />
           <Typography.Text>English</Typography.Text>
         </div>
       </Header>
-      <Content>
-        <div style={{ 
-          width: '90%', 
-          maxWidth: '1400px', 
-          margin: '20px auto',
-          display: 'flex',
-          gap: '20px'
-        }}>
-          <div style={{ flex: '1 1 300px', maxWidth: '300px' }}>
+      <Content className='app-content'>
+        <div className="content-wrapper">
+          <div className="form-section">
             <Form layout="vertical">
               <FormItem
                 label={t.repoUrl.label}
@@ -512,7 +505,7 @@ function App() {
                   placeholder={t.repoUrl.placeholder}
                   value={repoUrl}
                   onChange={handleInputChange}
-                  size="large"
+                  size={screens.xs ? 'middle' : 'large'}
                 />
               </FormItem>
               <FormItem
@@ -523,9 +516,9 @@ function App() {
                   placeholder={t.includePattern.placeholder}
                   value={includePattern}
                   onChange={(e) => setIncludePattern(e.target.value)}
-                  size="large"
+                  size={screens.xs ? 'middle' : 'large'}
                   autoSize={{ minRows: 1, maxRows: 3 }}
-                  style={{ resize: 'none' }}
+                  className="text-area"
                 />
               </FormItem>
               <FormItem
@@ -536,9 +529,9 @@ function App() {
                   placeholder={t.excludePattern.placeholder}
                   value={excludePattern}
                   onChange={(e) => setExcludePattern(e.target.value)}
-                  size="large"
+                  size={screens.xs ? 'middle' : 'large'}
                   autoSize={{ minRows: 1, maxRows: 3 }}
-                  style={{ resize: 'none' }}
+                  className="text-area"
                 />
               </FormItem>
               <FormItem>
@@ -546,13 +539,14 @@ function App() {
                   type="primary"
                   onClick={handleConvert}
                   loading={loading}
-                  style={{ width: '100%' }}
+                  className="full-width-button"
+                  size={screens.xs ? 'middle' : 'large'}
                 >
                   {t.buttons.convert}
                 </Button>
                 {markdown && (
                   <Button
-                    style={{ width: '100%', marginTop: 8 }}
+                    className="download-button"
                     onClick={() => {
                       const blob = new Blob([markdown], { type: 'text/markdown' });
                       const url = URL.createObjectURL(blob);
@@ -564,28 +558,25 @@ function App() {
                       document.body.removeChild(a);
                       URL.revokeObjectURL(url);
                     }}
+                    size={screens.xs ? 'middle' : 'large'}
                   >
                     {t.buttons.download}
                   </Button>
                 )}
               </FormItem>
-              {status && <div style={{ color: '#1890ff' }}>{status}</div>}
+              {status && <div className="status-text">{status}</div>}
               
               {processedFiles.length > 0 && (
-                <div style={{ marginTop: '20px' }}>
-                  <Typography.Text strong>{t.status.processedFiles} ({processedFiles.length})</Typography.Text>
+                <div className="processed-files">
+                  <Typography.Text strong>
+                    {t.status.processedFiles} ({processedFiles.length})
+                  </Typography.Text>
                   <List
-                    size="small"
-                    style={{ 
-                      marginTop: '8px',
-                      maxHeight: '300px',
-                      overflowY: 'auto',
-                      border: '1px solid #f0f0f0',
-                      borderRadius: '4px'
-                    }}
+                    size={screens.xs ? 'small' : 'default'}
+                    className="files-list"
                     dataSource={processedFiles}
                     renderItem={item => (
-                      <List.Item style={{ padding: '4px 8px' }}>
+                      <List.Item className="file-list-item">
                         <Typography.Text ellipsis style={{ width: '100%' }}>
                           {item}
                         </Typography.Text>
@@ -597,12 +588,8 @@ function App() {
             </Form>
           </div>
           
-          <div style={{ flex: '1 1 0%' }}>
-            <div style={{ 
-              border: '1px solid #d9d9d9', 
-              borderRadius: '2px',
-              height: 'calc(100vh - 120px)'
-            }}>
+          <div className="editor-section">
+            <div className="editor-wrapper">
               <Editor
                 height="100%"
                 defaultLanguage="markdown"
@@ -610,9 +597,9 @@ function App() {
                 onChange={(value) => setMarkdown(value || '')}
                 options={{
                   readOnly: false,
-                  minimap: { enabled: true },
+                  minimap: { enabled: !screens.xs },
                   wordWrap: 'on',
-                  fontSize: 14,
+                  fontSize: screens.xs ? 12 : 14,
                   scrollBeyondLastLine: false,
                   automaticLayout: true,
                 }}

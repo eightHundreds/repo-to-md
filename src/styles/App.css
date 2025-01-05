@@ -1,0 +1,137 @@
+.app-layout {
+  height: 100vh;
+  overflow: scroll;
+  width: 100vw;
+}
+
+.app-header {
+  background: #fff;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-content {
+  /* 103px是 app-header的高度 */
+  height: calc(100vh - 103px);
+  overflow: scroll;
+  width: 100vw;
+}
+
+.app-header-title {
+  margin: 0;
+}
+
+.language-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.content-wrapper {
+  width: 90%;
+  max-width: 1400px;
+  margin: 20px auto;
+  display: flex;
+  gap: 20px;
+}
+
+.form-section {
+  flex: 1 1 300px;
+  max-width: 300px;
+  width: 100%;
+}
+
+.full-width-button {
+  width: 100%;
+}
+
+.download-button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.status-text {
+  color: #1890ff;
+}
+
+.processed-files {
+  margin-top: 20px;
+}
+
+.files-list {
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+}
+
+.file-list-item {
+  padding: 4px 8px;
+}
+
+.editor-section {
+  flex: 1 1 0%;
+  width: 100%;
+  min-height: calc(100vh - 120px);
+}
+
+.editor-wrapper {
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  height: calc(100vh - 120px);
+}
+
+.text-area {
+  resize: none;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .app-header {
+    flex-wrap: wrap;
+    height: auto;
+    gap: 8px;
+    padding: 12px 20px;
+  }
+
+  .app-header-title {
+    margin: 4px 0;
+    font-size: 18px;
+  }
+
+  .language-switch {
+    font-size: 14px;
+  }
+
+  .content-wrapper {
+    flex-direction: column;
+  }
+
+  .form-section {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .files-list {
+    max-height: 200px;
+    font-size: 12px;
+  }
+
+  .file-list-item {
+    padding: 2px 8px;
+    font-size: 12px;
+  }
+
+  .editor-section,
+  .editor-wrapper {
+    min-height: 50vh;
+    height: 50vh;
+  }
+
+  .status-text {
+    font-size: 14px;
+  }
+} 
