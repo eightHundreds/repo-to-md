@@ -13,6 +13,7 @@
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
     "@types/minimatch": "^5.1.2",
+    "@vercel/analytics": "^1.4.1",
     "@webcontainer/api": "^1.1.8",
     "antd": "^5.12.5",
     "minimatch": "^10.0.1",
