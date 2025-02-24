@@ -2,7 +2,12 @@ import { useState, ChangeEvent, useEffect } from 'react';
 import { Button, Input, message, Layout, Typography, Form, List, Switch, Grid } from 'antd';
 import Editor from "@monaco-editor/react";
 import { WebContainer } from '@webcontainer/api';
+import { Octokit } from 'octokit';
 import { messages, type Locale } from './locales';
+import { initWebContainer, runCommand } from './services/webcontainer';
+import { findExistingGist, getFileName, createGist, updateGist } from './services/gist';
+import { log, getDefaultLocale, getRepoInfo } from './utils';
+import { DEFAULT_REPO_URL, DEFAULT_INCLUDE, DEFAULT_EXCLUDE, GITHUB_TOKEN_KEY, REPO_URL_KEY } from './constants';
 import './styles/App.css';
 
 // 扩展 window 类型
@@ -15,245 +20,11 @@ declare global {
 const { Header, Content } = Layout;
 const { Title } = Typography;
 const { Item: FormItem } = Form;
-const { TextArea } = Input;
-
-const DEFAULT_REPO_URL = '';
-const DEFAULT_INCLUDE = '';
-const DEFAULT_EXCLUDE = '**/node_modules/**,**/dist/**,**/build/**,**/.git/**,**/venv/**,**/__pycache__/**,**/*.pyc,**/package-lock.json,**/yarn.lock,**/pnpm-lock.yaml,**/.env,**/.DS_Store,**/coverage/**,**/.idea/**,**/.vscode/**,**/tmp/**,**/temp/**';
-
-// 保存 WebContainer 实例
-let webcontainerInstance: WebContainer | null = null;
-
-// 日志函数
-const log = (message: string, data?: unknown) => {
-  const timestamp = new Date().toISOString();
-  if (data) {
-    console.log(`[${timestamp}] ${message}`, data);
-  } else {
-    console.log(`[${timestamp}] ${message}`);
-  }
-};
-
-// 初始化 WebContainer
-const initWebContainer = async () => {
-  log('开始初始化 WebContainer');
-  try {
-    // 如果已经存在实例，先销毁它
-    if (webcontainerInstance) {
-      log('销毁现有的 WebContainer 实例');
-      webcontainerInstance.teardown();
-      webcontainerInstance = null;
-      window.webcontainerInstance = null;
-    }
-
-    log('尝试启动 WebContainer');
-    webcontainerInstance = await WebContainer.boot();
-    window.webcontainerInstance = webcontainerInstance;
-    log('WebContainer 启动成功');
-
-    // 安装必要的依赖
-    log('开始挂载 package.json');
-    await webcontainerInstance.mount({
-      'package.json': {
-        file: {
-          contents: JSON.stringify({
-            name: 'repo-processor',
-            type: 'module',
-            dependencies: {
-              'isomorphic-git': '^1.25.3',
-              '@isomorphic-git/lightning-fs': '^4.6.0',
-              'fast-glob': '^3.3.2'
-            }
-          }, null, 2)
-        }
-      },
-      'clone.js': {
-        file: {
-          contents: `
-import git from 'isomorphic-git';
-import http from 'isomorphic-git/http/web/index.js';
-import { promises as fs } from 'fs';
-
-const url = process.argv[2];
-const dir = process.argv[3];
-
-// 立即退出函数
-const exit = (code) => {
-  console.log(\`退出进程，退出码: \${code}\`);
-  process.exit(code);
-};
-
-// 错误处理
-process.on('unhandledRejection', (error) => {
-  console.error('未处理的 Promise 拒绝:', error);
-  exit(1);
-});
-
-process.on('uncaughtException', (error) => {
-  console.error('未捕获的异常:', error);
-  exit(1);
-});
-
-async function clone() {
-  try {
-    console.log('开始克隆:', url, '到', dir);
-    
-    // 确保目录存在
-    await fs.mkdir(dir, { recursive: true });
-    
-    await git.clone({
-      fs,
-      http,
-      url,
-      dir,
-      depth: 1,
-      singleBranch: true,
-      onProgress: (progress) => {
-        console.log(JSON.stringify(progress));
-      },
-      onAuth: () => ({
-        username: process.env.GITHUB_TOKEN || undefined,
-        password: process.env.GITHUB_TOKEN || undefined,
-      }),
-    });
-    
-    console.log('克隆完成');
-    // 确保在所有操作完成后立即退出
-    setTimeout(() => exit(0), 100);
-  } catch (error) {
-    console.error('克隆失败:', error);
-    if (error instanceof Error) {
-      console.error('错误详情:', error.message);
-      console.error('错误堆栈:', error.stack);
-    }
-    exit(1);
-  }
-}
-
-// 启动克隆并确保错误被捕获
-clone().catch((error) => {
-  console.error('克隆过程出错:', error);
-  exit(1);
-});`
-        }
-      },
-      'glob.js': {
-        file: {
-          contents: `
-import fg from 'fast-glob';
-
-const includes = process.argv[2] ? process.argv[2].split(',') : ['**/*'];
-const excludes = process.argv[3] ? process.argv[3].split(',') : [];
-
-async function findFiles() {
-  try {
-    const files = await fg(includes, {
-      cwd: 'repo',
-      ignore: [...excludes, '**/node_modules/**', '**/.*/**'],
-      dot: false,
-      absolute: false,
-      onlyFiles: true,
-      markDirectories: false
-    });
-    
-    console.log(JSON.stringify(files));
-    process.exit(0);
-  } catch (error) {
-    console.error('Error:', error);
-    process.exit(1);
-  }
-}
-
-findFiles();`
-        }
-      }
-    });
-    log('文件挂载成功');
-
-    // 安装依赖
-    log('开始安装依赖');
-    const installProcess = await webcontainerInstance.spawn('npm', ['install']);
-    log('npm install 进程已启动');
-
-    // 等待安装完成
-    const exitCode = await installProcess.exit;
-    log('npm install 完成，退出码:', exitCode);
-
-    if (exitCode !== 0) {
-      throw new Error('依赖安装失败');
-    }
-    log('依赖安装成功');
-
-  } catch (error) {
-    log('初始化失败', error);
-    if (error instanceof Error && error.message.includes('SharedArrayBuffer')) {
-      throw new Error('浏览器安全设置不支持 WebContainer，请确保网站运行在 HTTPS 或 localhost 环境下');
-    }
-    throw error;
-  }
-  return webcontainerInstance;
-};
-
-// 执行命令并等待完成
-const runCommand = async (container: WebContainer, command: string, args: string[] = [], progressCallback?: (message: string) => void) => {
-  log(`开始执行命令: ${command} ${args.join(' ')}`);
-  const process = await container.spawn(command, args);
-  log('进程已启动');
-
-  // 等待进程完成，同时处理输出
-  const exitCode = await new Promise<number>((resolve) => {
-    // 处理输出
-    const reader = process.output.getReader();
-    const readOutput = async () => {
-      try {
-        while (true) {
-          const result = await reader.read();
-          if (result.value) {
-            log('命令输出:', result.value);
-            if (progressCallback) {
-              progressCallback(result.value);
-            }
-          }
-        }
-      } catch (error) {
-        log('读取输出错误:', error);
-      } finally {
-        reader.releaseLock();
-      }
-    };
-
-    // 启动输出读取
-    readOutput();
-
-    // 等待进程退出
-    process.exit.then(resolve);
-  });
-
-  log('命令执行完成，退出码:', exitCode);
-
-  if (exitCode !== 0) {
-    throw new Error(`命令执行失败: ${command} ${args.join(' ')}`);
-  }
-};
-
-// 获取系统默认语言
-const getDefaultLocale = (): Locale => {
-  const systemLanguages = navigator.languages || [navigator.language];
-  // 检查是否有中文（简体或繁体）
-  const hasChinese = systemLanguages.some(lang => 
-    lang.toLowerCase().startsWith('zh') || 
-    lang.toLowerCase() === 'zh' || 
-    lang.toLowerCase() === 'zh-cn' || 
-    lang.toLowerCase() === 'zh-tw' || 
-    lang.toLowerCase() === 'zh-hk'
-  );
-  return hasChinese ? 'zh' : 'en';
-};
-
+const { TextArea, Password } = Input;
 const { useBreakpoint } = Grid;
 
 function App() {
-  const [repoUrl, setRepoUrl] = useState(DEFAULT_REPO_URL);
+  const [repoUrl, setRepoUrl] = useState(() => localStorage.getItem(REPO_URL_KEY) || DEFAULT_REPO_URL);
   const [includePattern, setIncludePattern] = useState(DEFAULT_INCLUDE);
   const [excludePattern, setExcludePattern] = useState(DEFAULT_EXCLUDE);
   const [markdown, setMarkdown] = useState('');
@@ -261,8 +32,29 @@ function App() {
   const [status, setStatus] = useState('');
   const [processedFiles, setProcessedFiles] = useState<string[]>([]);
   const [locale, setLocale] = useState<Locale>(getDefaultLocale());
+  const [githubToken, setGithubToken] = useState(() => localStorage.getItem(GITHUB_TOKEN_KEY) || '');
+  const [gistUrl, setGistUrl] = useState('');
+  const [gistId, setGistId] = useState('');
   const screens = useBreakpoint();
   const t = messages[locale];
+
+  // 保存 token 到 localStorage
+  useEffect(() => {
+    if (githubToken) {
+      localStorage.setItem(GITHUB_TOKEN_KEY, githubToken);
+    } else {
+      localStorage.removeItem(GITHUB_TOKEN_KEY);
+    }
+  }, [githubToken]);
+
+  // 保存 repoUrl 到 localStorage
+  useEffect(() => {
+    if (repoUrl) {
+      localStorage.setItem(REPO_URL_KEY, repoUrl);
+    } else {
+      localStorage.removeItem(REPO_URL_KEY);
+    }
+  }, [repoUrl]);
 
   // 监听系统语言变化
   useEffect(() => {
@@ -276,11 +68,106 @@ function App() {
     };
   }, []);
 
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setRepoUrl(e.target.value);
+  };
+
+  const handleSaveToGist = async () => {
+    if (!githubToken) {
+      message.error(t.errors.tokenRequired);
+      return;
+    }
+
+    if (!markdown) {
+      return;
+    }
+
+    const repoInfo = getRepoInfo(repoUrl);
+    if (!repoInfo) {
+      message.error(t.errors.invalidUrl);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setStatus(t.status.savingToGist);
+
+      const octokit = new Octokit({ auth: githubToken });
+      
+      const fileName = await getFileName(repoInfo, includePattern, excludePattern, DEFAULT_EXCLUDE);
+
+      // 如果没有保存的gist id，尝试查找已存在的gist
+      if (!gistId) {
+        setStatus(t.status.searchingGist);
+        const existingGistId = await findExistingGist(octokit);
+        if (existingGistId) {
+          setGistId(existingGistId);
+          setStatus(t.status.foundExistingGist);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 显示状态消息1秒
+        }
+      }
+
+      let response;
+      if (gistId) {
+        // 更新现有的gist
+        response = await updateGist(octokit, gistId, fileName, markdown);
+      } else {
+        // 创建新的gist
+        response = await createGist(octokit, fileName, markdown);
+        if (response.id) {
+          setGistId(response.id);
+        }
+      }
+
+      // 获取文件的URL
+      if (response?.files && fileName in response.files && response.files[fileName]?.raw_url) {
+        setGistUrl(response.files[fileName].raw_url);
+        setStatus(t.status.gistSaved);
+        message.success(t.status.gistSaved);
+      } else {
+        throw new Error('Failed to get file URL');
+      }
+    } catch (error) {
+      console.error('Failed to save gist:', error);
+      message.error(t.errors.gistSaveFailed);
+      // 如果更新失败，清除gist id
+      if (error instanceof Error && error.message.includes('Not Found')) {
+        setGistId('');
+      }
+    } finally {
+      setLoading(false);
+      setStatus('');
+    }
+  };
+
+  const cleanupEnvironment = async () => {
+    log('开始清理环境');
+    // 重置状态
+    setMarkdown('');
+    setProcessedFiles([]);
+    setGistUrl('');
+    setStatus('');
+
+    // 清理 WebContainer
+    if (window.webcontainerInstance) {
+      log('销毁现有的 WebContainer 实例');
+      try {
+        await window.webcontainerInstance.teardown();
+        window.webcontainerInstance = null;
+      } catch (error) {
+        log('清理 WebContainer 实例出错:', error);
+      }
+    }
+  };
+
   const handleConvert = async () => {
     try {
       log('开始转换流程');
       setLoading(true);
       setStatus(t.status.init);
+
+      // 首先清理环境
+      await cleanupEnvironment();
 
       // 解析 include 和 exclude 模式
       const includes = includePattern.split(',').map(p => p.trim()).filter(Boolean);
@@ -296,16 +183,6 @@ function App() {
       // 获取或初始化 WebContainer
       const container = await initWebContainer();
       log('WebContainer 准备就绪');
-
-      // 清理旧的仓库目录（如果存在）
-      try {
-        setStatus(t.status.cleaning);
-        log('开始清理旧目录');
-        await container.fs.rm('repo', { recursive: true });
-        log('旧目录清理完成');
-      } catch (error) {
-        log('清理旧目录失败（可能不存在）:', error);
-      }
 
       // 克隆仓库
       setStatus(t.status.cloning);
@@ -472,12 +349,15 @@ function App() {
     }
   };
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setRepoUrl(e.target.value);
-  };
-
   return (
     <Layout className="app-layout">
+      <a href="https://github.com/eightHundreds/repo-to-md" className="github-corner" aria-label="View source on GitHub">
+        <svg width="80" height="80" viewBox="0 0 250 250" style={{ fill: '#151513', color: '#fff', position: 'absolute', top: 0, border: 0, right: 0 }} aria-hidden="true">
+          <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+          <path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style={{ transformOrigin: '130px 106px' }} className="octo-arm"></path>
+          <path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" className="octo-body"></path>
+        </svg>
+      </a>
       <Header className="app-header">
         <Title level={3} className="app-header-title">{t.title}</Title>
         <div className="language-switch">
@@ -505,6 +385,17 @@ function App() {
                   placeholder={t.repoUrl.placeholder}
                   value={repoUrl}
                   onChange={handleInputChange}
+                  size={screens.xs ? 'middle' : 'large'}
+                />
+              </FormItem>
+              <FormItem
+                label={t.githubToken.label}
+                tooltip={t.githubToken.tooltip}
+              >
+                <Password
+                  placeholder={t.githubToken.placeholder}
+                  value={githubToken}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setGithubToken(e.target.value)}
                   size={screens.xs ? 'middle' : 'large'}
                 />
               </FormItem>
@@ -545,26 +436,43 @@ function App() {
                   {t.buttons.convert}
                 </Button>
                 {markdown && (
-                  <Button
-                    className="download-button"
-                    onClick={() => {
-                      const blob = new Blob([markdown], { type: 'text/markdown' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = 'repository.md';
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                    }}
-                    size={screens.xs ? 'middle' : 'large'}
-                  >
-                    {t.buttons.download}
-                  </Button>
+                  <>
+                    <Button
+                      className="download-button"
+                      onClick={() => {
+                        const blob = new Blob([markdown], { type: 'text/markdown' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'repository.md';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      }}
+                      size={screens.xs ? 'middle' : 'large'}
+                    >
+                      {t.buttons.download}
+                    </Button>
+                    <Button
+                      className="gist-button"
+                      onClick={handleSaveToGist}
+                      loading={loading}
+                      size={screens.xs ? 'middle' : 'large'}
+                    >
+                      {t.buttons.saveToGist}
+                    </Button>
+                  </>
                 )}
               </FormItem>
               {status && <div className="status-text">{status}</div>}
+              {gistUrl && (
+                <div className="gist-url">
+                  <a href={gistUrl} target="_blank" rel="noopener noreferrer">
+                    {gistUrl}
+                  </a>
+                </div>
+              )}
               
               {processedFiles.length > 0 && (
                 <div className="processed-files">
