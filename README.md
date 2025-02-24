@@ -13,16 +13,19 @@
 - 📝 实时预览：内置 Monaco 编辑器，支持 Markdown 实时预览和编辑
 - 💾 一键下载：转换完成后可直接下载 Markdown 文件
 - 🔍 文件列表：显示所有已处理的文件清单
+- 📌 Gist 保存：支持将转换后的文档保存到 GitHub Gist
 
 ## 使用方法
 
 1. 访问网站，输入 GitHub 仓库的 URL（例如：https://github.com/owner/repo）
 2. 可选：设置文件包含模式（例如：`**/*.md` 仅包含 markdown 文件）
 3. 可选：设置文件排除模式（例如：`**/node_modules/**` 排除 node_modules 目录）
-4. 点击"转换"按钮开始处理
-5. 等待转换完成后，可以：
+4. 可选：输入 GitHub Token 以启用 Gist 保存功能
+5. 点击"转换"按钮开始处理
+6. 等待转换完成后，可以：
    - 在编辑器中预览和编辑内容
    - 点击"下载 Markdown"保存文件
+   - 点击"保存到 Gist"将文档保存到 GitHub Gist
 
 ## 技术栈
 
@@ -52,16 +55,19 @@ This is an online tool based on WebContainer technology that converts GitHub rep
 - 📝 Real-time Preview: Built-in Monaco editor with Markdown preview and editing
 - 💾 One-click Download: Download the converted Markdown file instantly
 - 🔍 File List: Display a list of all processed files
+- 📌 Gist Support: Save converted documents to GitHub Gist
 
 ## How to Use
 
 1. Visit the website and enter a GitHub repository URL (e.g., https://github.com/owner/repo)
 2. Optional: Set file include patterns (e.g., `**/*.md` to include only markdown files)
 3. Optional: Set file exclude patterns (e.g., `**/node_modules/**` to exclude node_modules directory)
-4. Click the "Convert" button to start processing
-5. After conversion is complete, you can:
+4. Optional: Enter GitHub Token to enable Gist saving feature
+5. Click the "Convert" button to start processing
+6. After conversion is complete, you can:
    - Preview and edit content in the editor
    - Click "Download Markdown" to save the file
+   - Click "Save to Gist" to save the document to GitHub Gist
 
 ## Tech Stack
 
@@ -77,3 +83,4 @@ This is an online tool based on WebContainer technology that converts GitHub rep
 - Due to WebContainer technology, please ensure you're using a modern browser that supports SharedArrayBuffer
 - The site should be run under HTTPS or localhost environment
 - For large repositories, the conversion process may take some time, please be patient
+
